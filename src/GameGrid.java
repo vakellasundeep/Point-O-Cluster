@@ -1,27 +1,21 @@
 import java.awt.*;
 import java.awt.event.*;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.awt.geom.Line2D;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
-import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 import javax.swing.*;
 
 public class GameGrid extends JPanel implements Runnable, MouseListener, ComponentListener{
 
-    private static final Color black = new Color(0,0,0);
+    public static final Color black = new Color(0,0,0);
     private boolean gameSimStatus = false;
-    private Dimension SizeOfGrid = null;
-    private ArrayList<Point> point = new ArrayList<>(0);
-    private static final int CELL_SIZE = 20;
+    private Dimension gridSize = null;
+    public ArrayList<Point> point = new ArrayList<>(0);
+    public static final int CELL_SIZE = 20;
     private HashMap<Point,ArrayList<Point>> map = new HashMap<>();
     
     
@@ -45,7 +39,7 @@ public class GameGrid extends JPanel implements Runnable, MouseListener, Compone
     public void drawDot(MouseEvent e){
         int x = e.getPoint().x/CELL_SIZE-1;
         int y = e.getPoint().y/CELL_SIZE-1;
-        if ((x >= 0) && (x < SizeOfGrid.width) && (y >= 0) && (y < SizeOfGrid.height)) {
+        if ((x >= 0) && (x < gridSize.width) && (y >= 0) && (y < gridSize.height)) {
             drawDot(x,y);
         }
     }
@@ -56,10 +50,10 @@ public class GameGrid extends JPanel implements Runnable, MouseListener, Compone
         point.clear();
     }
 
-    public void updateGrid(){
+    public void updateGridSize(){
         ArrayList<Point> removeList = new ArrayList<>(0);
         for (Point current : point) {
-            if ((current.x > SizeOfGrid.width-1) || (current.y > SizeOfGrid.height-1)) {
+            if ((current.x > gridSize.width-1) || (current.y > gridSize.height-1)) {
                 removeList.add(current);
             }
         }
@@ -80,18 +74,20 @@ public class GameGrid extends JPanel implements Runnable, MouseListener, Compone
         }
 
         gr.setColor(Color.white);
-        for (int i=0; i<=SizeOfGrid.width; i++){
-            gr.drawLine(((i*CELL_SIZE)+CELL_SIZE), CELL_SIZE, (i*CELL_SIZE)+CELL_SIZE, CELL_SIZE + (CELL_SIZE*SizeOfGrid.height));
-        }
-        for (int i=0; i<=SizeOfGrid.height; i++){
-            gr.drawLine(CELL_SIZE, ((i*CELL_SIZE)+CELL_SIZE), CELL_SIZE*(SizeOfGrid.width+1), ((i*CELL_SIZE)+CELL_SIZE));
+        if(gridSize!=null) {
+            for (int i = 0; i <= gridSize.width; i++) {
+                gr.drawLine(((i * CELL_SIZE) + CELL_SIZE), CELL_SIZE, (i * CELL_SIZE) + CELL_SIZE, CELL_SIZE + (CELL_SIZE * gridSize.height));
+            }
+            for (int i = 0; i <= gridSize.height; i++) {
+                gr.drawLine(CELL_SIZE, ((i * CELL_SIZE) + CELL_SIZE), CELL_SIZE * (gridSize.width + 1), ((i * CELL_SIZE) + CELL_SIZE));
+            }
         }
     }
 
     @Override
     public void componentResized(ComponentEvent e){
-    	SizeOfGrid = new Dimension(getWidth()/CELL_SIZE-2, (getHeight())/CELL_SIZE-2);
-        updateGrid();
+        gridSize = new Dimension(getWidth()/CELL_SIZE-2, (getHeight())/CELL_SIZE-2);
+        updateGridSize();
     }
 
     @Override
@@ -138,23 +134,28 @@ public class GameGrid extends JPanel implements Runnable, MouseListener, Compone
 
     @Override
     public void run(){
-        boolean[][] gameGrid = new boolean[SizeOfGrid.width+2][SizeOfGrid.height+2];
-        for(Point current : point) {
-            gameGrid[current.x+1][current.y+1] = true;
-        }
-        ArrayList<Point> dots = new ArrayList<>(0);
 
-       
-  
-        
-        eraseGrid();
-        point.addAll(dots);
-        repaint();
-       
+    }
+
+    public void run(Object distance){
+        for(Point outP : point) {
+            for(Point inP: point){
+                if (euclideanDistance(outP, inP) <= Integer.parseInt(distance.toString())){
+                    Graphics gr = getGraphics();
+                    try {
+                            gr.setColor(black);
+                        }
+                     catch (ConcurrentModificationException cme){
+                        //do nothing
+                    }
+                    gr.drawLine(outP.x, outP.y, inP.x, inP.y);
+                }
+            }
+        }
     }
 
 	public void setrandom() {
-		for(int i=1;i<=6;++i) {
+		for(int i=1;i<=20;++i) {
 			
 			
 		int x = ThreadLocalRandom.current().nextInt(0, 30 + 1);
@@ -169,53 +170,61 @@ public class GameGrid extends JPanel implements Runnable, MouseListener, Compone
 	
 
 
-	public void loadDot() {
-		
-	}
+	public void loadDot() throws IOException {
+        FileReader fr=new FileReader("output.txt");
+
+        // read character wise from string and write
+        // into FileWriter
+        int ch;
+        ArrayList<Character> arrayList = new ArrayList<Character>();
+
+        while ((ch=fr.read())!=-1)
+            arrayList.add((char)(ch));
+
+        String str = new String("");
+        str = "";
+        for(int i = 0; i<arrayList.size(); i++){
+            if(arrayList.get(i) != '\n'){
+                str += (arrayList.get(i));
+            }
+            else{
+                String[] tokens = str.toString().split(",");
+                int x = Integer.parseInt(tokens[0]);
+                int y = Integer.parseInt(tokens[1]);
+
+                if (!point.contains(new Point(x,y))) {
+                    point.add(new Point(x,y));
+                }
+
+                str = "";
+
+            }
+        }
+
+        repaint();
+        // close the file
+        fr.close();
+    }
 
 
 	public void saveDot() throws IOException {
-		//ArrayList<Point> d = new ArrayList<Point>();
-         
-//        for(Point x:point) {
-//            System.out.println(x);
-//        }
-//  
-//        FileWriter writer = null;
-//		try {
-//			writer = new FileWriter("output.txt");
-//		} catch (IOException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		} 
-//        for(Point x: point) {
-//          writer.write(x + System.lineSeparator());
-//        }
-//        writer.close();
-		
-		
-		FileOutputStream fout= new FileOutputStream ("output.txt");
-		ObjectOutputStream oos = new ObjectOutputStream(fout);
-		for(Point x: point) {
-			oos.writeObject(x);
-       }
-		
-		fout.close();
+        FileWriter fw=new FileWriter("output.txt");
+
+        // read character wise from string and write
+        // into FileWriter
+        for(Point eachPoint: point)
+            fw.write(String.valueOf(eachPoint.x) + ',' +String.valueOf(eachPoint.y) + "\n");
+
+        fw.close();
 		
 		
 	}
 	
-//	public void runAlgorihtm() {
-//		for (Point point1: point) {
-//			for(Point point2:point) {
-//				if ()
-//			//Euclidean distance
-//				if(edistance <= distance) {
-//					
-//				}
-//			}
-//		}
-//	}
+	public double euclideanDistance(Point p1, Point p2) {
+        double ycoord = Math.abs (p1.y - p2.y);
+        double xcoord = Math.abs (p1.x - p2.x);
+        return Math.sqrt((ycoord)*(ycoord) +(xcoord)*(xcoord));
+	}
 	
 	
 	

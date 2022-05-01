@@ -24,7 +24,6 @@ public class List extends JPanel implements ActionListener
     transient SpinnerModel model = new SpinnerNumberModel(1, 1, 50, 1);     
     public JSpinner spinner = new JSpinner(model);
     private JLabel label = new JLabel("Distance");
-
    
     private  Dimension btn_dim = new Dimension(100, 50);
     private  Dimension spi_dim = new Dimension(50, 50);
